@@ -1,6 +1,6 @@
 package me.heretechsutil;
 
-import me.heretechsutil.commandexecutors.PayPlayerCommandExecutor;
+import me.heretechsutil.commandexecutors.PointsCommandExecutor;
 import me.heretechsutil.commandexecutors.TabCompleteCommandExecutor;
 import me.heretechsutil.eventhandlers.MobTargetListener;
 import me.heretechsutil.eventhandlers.PlayerDeathListener;
@@ -30,8 +30,8 @@ public final class HeretechsUtil extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MobTargetListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(), this);
-        getCommand("pay").setExecutor(new PayPlayerCommandExecutor());
-        getCommand("pay").setTabCompleter(new TabCompleteCommandExecutor());
+        getCommand("points").setExecutor(new PointsCommandExecutor());
+        getCommand("points").setTabCompleter(new TabCompleteCommandExecutor());
 
         createFiles();
         DatabaseOperations.createNewWorldIfNotExists(this.getServer().getWorld(getCurrentWorld()));

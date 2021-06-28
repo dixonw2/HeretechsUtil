@@ -6,7 +6,8 @@ author: FleetingDream
 
 #commands
 commands:
-  pay:
-    description: pay a player in points
-    usage: /<command> <player> <points>
-    aliases: [pp]
+  points:
+    description: pay a player or query your points
+    usage: /<command> [pay/query] <player> <points>
+    default: true
+    aliases: [p]

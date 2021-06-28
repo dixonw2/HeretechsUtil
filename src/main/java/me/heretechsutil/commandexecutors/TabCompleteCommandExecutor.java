@@ -17,17 +17,26 @@ import java.util.Locale;
 
 public class TabCompleteCommandExecutor implements TabCompleter {
 
+    private static final String[] subCommands = { "pay", "query" };
+
     @Override
     public List<String> onTabComplete(CommandSender sender,Command cmd, String alias, String[] args) {
-        List<String> players = new ArrayList<>();
+        List<String> options = new ArrayList<>();
         if (sender instanceof Player) {
-            Player p = (Player) sender;
-            p.getWorld().getPlayers().forEach(pl -> players.add(pl.getName()));
-
             List<String> playerNames = new ArrayList<>();
             if (args.length == 1) {
-                for (String pl : players) {
-                    if (pl.toLowerCase().contains(args[0].toLowerCase()))
+                for (String opt : subCommands) {
+                    if (opt.toLowerCase().contains(args[0].toLowerCase())) {
+                        options.add(opt);
+                    }
+                }
+                return options;
+            }
+            else if (args.length == 2) {
+                Player p = (Player) sender;
+                p.getWorld().getPlayers().forEach(pl -> options.add(pl.getName()));
+                for (String pl : options) {
+                    if (pl.toLowerCase().contains(args[1].toLowerCase()))
                         playerNames.add(pl);
                 }
                 Collections.sort(playerNames);
