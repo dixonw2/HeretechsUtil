@@ -19,29 +19,6 @@ public class DatabaseOperations {
     private static final HeretechsUtil util = HeretechsUtil.getInstance();
     private static final DataSource dataSource = createDataSource();
 
-   /* public static void createTables() {
-        String setup = "";
-        try (InputStream in = new FileInputStream("..\\..\\..\\resources\\CreateInitialTables.sql")) {
-            setup = new BufferedReader(
-                    new InputStreamReader(in)).lines().collect(Collectors.joining("\n"));
-
-        }
-        catch (IOException e) {
-            util.getLogger().log(Level.SEVERE, "Could not read CreateInitialTables file", e);
-        }
-        String[] queries = setup.split(";");
-        for (String query : queries) {
-            if (query.isEmpty())
-                continue;
-            try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(query)) {
-                cmd.execute();
-            }
-            catch (SQLException e) {
-                util.getLogger().log(Level.SEVERE, "Exception occurred when creating the tables", e);
-            }
-        }
-    }*/
-
     public static boolean playerExists(Player p) {
         String methodTrace = "DatabaseOperations.playerExists(): ";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
@@ -53,7 +30,8 @@ public class DatabaseOperations {
         }
         catch (SQLException e) {
             util.getLogger().log(Level.SEVERE,
-                    methodTrace + "Exception occurred while checking if player " + p.getName() + " exists", e);
+                    String.format("%s Exception occurred while checking if player %s exists",
+                        methodTrace, p.getName()), e);
         }
         return false;
     }
@@ -70,7 +48,8 @@ public class DatabaseOperations {
         }
         catch (SQLException e) {
             util.getLogger().log(Level.SEVERE,
-                    methodTrace + "Exception occurred while checking if world " + w.getName() + " exists", e);
+                    String.format("%s Exception occurred while checking if world %s exists",
+                        methodTrace, w.getName()), e);
         }
         return false;
     }
@@ -91,14 +70,14 @@ public class DatabaseOperations {
         }
         catch (SQLException e) {
             util.getLogger().log(Level.SEVERE,
-                    methodTrace + "Exception occurred while checking if world " + w.getName() + " exists", e);
+                    String.format("%s Exception occurred while checking if world %s exists",
+                        methodTrace, w.getName()), e);
         }
         return false;
     }
 
     public static void createNewPlayerIfNotExists(Player p) {
         String methodTrace = "DatabaseOperations.createNewPlayerIfNotExists(): ";
-        util.getLogger().info(playerExists(p) ? "I exist" : "I don't exist?");
         if (!playerExists(p)) {
             try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                     "INSERT INTO Player (UUID, PlayerName, Points) " +
@@ -107,11 +86,12 @@ public class DatabaseOperations {
                 cmd.setString(2, p.getName());
                 cmd.setInt(3, 0);
                 cmd.executeUpdate();
-                util.getLogger().info(methodTrace + "player " + p.getName() + " created");
+                util.getLogger().info(String.format("%s Player %s created", methodTrace, p.getName()));
             }
             catch (SQLException e) {
                 util.getLogger().log(Level.SEVERE,
-                        methodTrace + "Exception occurred while creating player " + p.getName(), e);
+                        String.format("%s Exception occurred while creating player %s",
+                            methodTrace, p.getName()), e);
             }
         }
         if (!playerWorldExists(p, p.getWorld()))
@@ -120,7 +100,6 @@ public class DatabaseOperations {
 
     public static void createNewWorldIfNotExists(World w) {
         String methodTrace = "DatabaseOperations.createNewWorldIfNotExists(): ";
-        util.getLogger().info(worldExists(w) ? "I exist world" + w.getName() : "I don't exist?" + w.getName());
         if (!worldExists(w)) {
             try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                     "INSERT INTO World (WorldName, UUID, Active) " +
@@ -134,7 +113,8 @@ public class DatabaseOperations {
                 setInactiveWorlds(w);
             }
             catch (SQLException e) {
-                util.getLogger().log(Level.SEVERE, methodTrace + "Exception occurred while creating world " + w.getName(), e);
+                util.getLogger().log(Level.SEVERE, String.format("%s Exception occurred while creating world %s",
+                    methodTrace, w.getName()), e);
             }
         }
     }
@@ -153,12 +133,13 @@ public class DatabaseOperations {
                 cmd.setString(3, p.getUniqueId().toString());
                 cmd.executeUpdate();
 
-                util.getLogger().info(methodTrace + "playerworld created for player " + p.getName() +
-                        ", world " + w.getName());
+                util.getLogger().info(String.format("%s PlayerWorld created for player %s, world %s",
+                        methodTrace, p.getName(), w.getName()));
             }
             catch (SQLException e) {
-                util.getLogger().log(Level.SEVERE, methodTrace + "Exception occurred while creating playerworld for " +
-                        "player " + p.getName() + ", world " + w.getName(), e);
+                util.getLogger().log(Level.SEVERE,
+                    String.format("%s Exception occurred while creating PlayerWorld for player %s, world %s",
+                            p.getName(), w.getName()), e);
             }
         }
     }
@@ -171,10 +152,11 @@ public class DatabaseOperations {
             cmd.setString(2, w.getUID().toString());
             cmd.setBoolean(3, true);
             cmd.executeUpdate();
-            util.getLogger().info(methodTrace + "active worlds set to inactive");
+            util.getLogger().info(String.format("%s Active worlds set to inactive", methodTrace));
         }
         catch (SQLException e) {
-            util.getLogger().log(Level.SEVERE, methodTrace + "Exception occurred while updating old worlds", e);
+            util.getLogger().log(Level.SEVERE,
+                String.format("%s Exception occurred while updating inactive worlds", methodTrace), e);
         }
     }
 
