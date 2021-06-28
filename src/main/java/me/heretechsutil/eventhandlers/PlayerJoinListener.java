@@ -1,17 +1,19 @@
 package me.heretechsutil.eventhandlers;
 
+import me.heretechsutil.HeretechsUtil;
+import me.heretechsutil.operations.DatabaseOperations;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-
-import java.util.UUID;
 
 public class PlayerJoinListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        UUID uuid = event.getPlayer().getUniqueId();
+        Player p = event.getPlayer();
+        DatabaseOperations.createNewPlayerIfNotExists(p);
+        // TODO: assign tasks
 
-        // TODO: check if uuid exists in database. If not, create player, world, stuff
     }
 }
