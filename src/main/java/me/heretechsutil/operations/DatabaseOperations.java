@@ -7,12 +7,14 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import javax.sql.DataSource;
+import java.io.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Properties;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public class DatabaseOperations {
 
@@ -22,7 +24,7 @@ public class DatabaseOperations {
     public static boolean playerExists(Player p) {
         String methodTrace = "DatabaseOperations.playerExists():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
-                "SELECT id FROM Player p WHERE p.UUID = ?")) {
+                "SELECT id FROM Player P WHERE P.UUID = ?")) {
             cmd.setString(1, p.getUniqueId().toString());
             ResultSet rs = cmd.executeQuery();
             if (rs.next())
@@ -39,7 +41,7 @@ public class DatabaseOperations {
     public static boolean worldExists(World w) {
         String methodTrace = "DatabaseOperations.worldExists():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
-                "SELECT w.id FROM World w WHERE w.UUID = ?")) {
+                "SELECT W.id FROM World W WHERE W.UUID = ?")) {
             cmd.setString(1, w.getUID().toString());
             ResultSet rs = cmd.executeQuery();
             if (rs.next()) {
@@ -57,10 +59,10 @@ public class DatabaseOperations {
     public static boolean playerWorldExists(Player p, World w) {
         String methodTrace = "DatabaseOperations.playerWorldExists():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
-        "SELECT pw.id FROM PlayerWorld pw " +
-            "JOIN Player p ON p.id = pw.idPlayer " +
-            "JOIN World w ON w.id = pw.idWorld " +
-            "WHERE p.UUID = ? AND w.UUID = ?")) {
+        "SELECT PW.id FROM PlayerWorld PW " +
+            "JOIN Player P ON P.id = PW.idPlayer " +
+            "JOIN World W ON W.id = PW.idWorld " +
+            "WHERE P.UUID = ? AND W.UUID = ?")) {
             cmd.setString(1, p.getUniqueId().toString());
             cmd.setString(2, w.getUID().toString());
             ResultSet rs = cmd.executeQuery();
@@ -109,7 +111,7 @@ public class DatabaseOperations {
                 cmd.setBoolean(3, true);
                 cmd.executeUpdate();
 
-                util.getLogger().info(methodTrace + "world " + w.getName() + " created");
+                util.getLogger().info(String.format("%s World %s created", methodTrace, w.getName()));
                 setInactiveWorlds(w);
             }
             catch (SQLException e) {
@@ -124,10 +126,10 @@ public class DatabaseOperations {
         if (!playerWorldExists(p, w)) {
             try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                     "INSERT INTO PlayerWorld (idPlayer, idWorld) " +
-                            "SELECT p.id, w.id " +
-                            "FROM Player p " +
-                            "JOIN World w ON w.UUID = ? AND w.Active = ? " +
-                            "WHERE p.UUID = ?")) {
+                            "SELECT P.id, W.id " +
+                            "FROM Player P " +
+                            "JOIN World W ON W.UUID = ? AND W.Active = ? " +
+                            "WHERE P.UUID = ?")) {
                 cmd.setString(1, w.getUID().toString());
                 cmd.setBoolean(2, true);
                 cmd.setString(3, p.getUniqueId().toString());
@@ -139,7 +141,7 @@ public class DatabaseOperations {
             catch (SQLException e) {
                 util.getLogger().log(Level.SEVERE,
                     String.format("%s Exception occurred while creating PlayerWorld for player %s, world %s",
-                            p.getName(), w.getName()), e);
+                            methodTrace, p.getName(), w.getName()), e);
             }
         }
     }
@@ -164,7 +166,7 @@ public class DatabaseOperations {
         String methodTrace = "DatabaseOperations.getPointsForPlayer():";
         int points = 0;
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
-                "SELECT p.Points FROM Player p WHERE p.UUID = ?")) {
+                "SELECT P.Points FROM Player P WHERE P.UUID = ?")) {
             cmd.setString(1, p.getUniqueId().toString());
             ResultSet rs = cmd.executeQuery();
 
@@ -197,17 +199,37 @@ public class DatabaseOperations {
         }
     }
 
+    public static void createTablesIfNotExist() {
+        String setup = "";
+        try (InputStream in = new FileInputStream("plugins/HeretechsUtil/CreateInitialTables.sql")) {
+            setup = new BufferedReader(new InputStreamReader(in)).lines().collect(Collectors.joining("\n"));
+        }
+        catch (IOException e) {
+            util.getLogger().log(Level.SEVERE, "Could not read CreateInitialTables setup files", e);
+        }
+
+        String[] queries = setup.split(";");
+        for (String query : queries) {
+            if (query.isEmpty()) continue;
+            try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(query)) {
+                cmd.execute();
+            }
+            catch (SQLException e) {
+                util.getLogger().log(Level.SEVERE, "Exception occurred while creating tables", e);
+            }
+        }
+    }
+
     private static DataSource createDataSource() {
         Properties props = new Properties();
         props.setProperty("dataSourceClassName", "com.mysql.cj.jdbc.MysqlConnectionPoolDataSource");
         props.setProperty("dataSource.serverName", util.getConfig().getString("database.host"));
         props.setProperty("dataSource.portNumber", util.getConfig().getString("database.port"));
-        props.setProperty("dataSource.databaseName", util.getConfig().getString("database.databaseName"));
+        props.setProperty("dataSource.databaseName", util.getConfig().getString("database.database-name"));
         props.setProperty("dataSource.user", util.getConfig().getString("database.user"));
         props.setProperty("dataSource.password", util.getConfig().getString("database.password"));
 
         HikariConfig config = new HikariConfig(props);
-        DataSource dataSource = new HikariDataSource(config);
-        return dataSource;
+        return new HikariDataSource(config);
     }
 }

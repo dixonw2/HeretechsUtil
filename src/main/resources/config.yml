@@ -1,7 +1,17 @@
-#database connection
+#database connection for points
 database:
   host: localhost
   port: 3306
-  databaseName: name
-  user: name
-  password: password
+  database-name: user8863
+  user: user8863
+  password: 3cb66a1cb5
+
+#mob settings
+
+#time in hours before mobs' damage start increasing
+#default: 72, 0 disables
+multiplier-time: 72
+
+#max multiplier value
+#default 3.0, 0 is no max
+max-multiplier: 3.0

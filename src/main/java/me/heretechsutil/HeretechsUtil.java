@@ -19,8 +19,6 @@ import java.util.logging.Level;
 
 public final class HeretechsUtil extends JavaPlugin {
 
-    private File configf;
-    private FileConfiguration config;
     private static HeretechsUtil instance;
 
     @Override
@@ -34,6 +32,7 @@ public final class HeretechsUtil extends JavaPlugin {
         getCommand("points").setTabCompleter(new TabCompleteCommandExecutor());
 
         createFiles();
+        DatabaseOperations.createTablesIfNotExist();
         DatabaseOperations.createNewWorldIfNotExists(this.getServer().getWorld(getCurrentWorld()));
     }
 
@@ -47,13 +46,18 @@ public final class HeretechsUtil extends JavaPlugin {
     }
 
     private void createFiles() {
-        configf = new File(getDataFolder(), "config.yml");
+        File configf = new File(getDataFolder(), "config.yml");
+        File createTables = new File(getDataFolder(), "CreateInitialTables.sql");
 
         if (!configf.exists()) {
             configf.getParentFile().mkdirs();
             saveResource("config.yml", false);
         }
-        config = new YamlConfiguration();
+        if (!createTables.exists()) {
+            createTables.getParentFile().mkdirs();
+            saveResource("CreateInitialTables.sql", false);
+        }
+        FileConfiguration config = new YamlConfiguration();
         try {
             config.load(configf);
         }
@@ -67,8 +71,7 @@ public final class HeretechsUtil extends JavaPlugin {
         try {
             FileInputStream in = new FileInputStream(new File("server.properties"));
             pr.load(in);
-            String world = pr.getProperty("level-name");
-            return world;
+            return pr.getProperty("level-name");
         }
         catch (IOException e) {
             getLogger().log(Level.SEVERE, "Exception occurred when retrieving server.properties", e);
