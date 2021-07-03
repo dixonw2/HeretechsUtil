@@ -1,8 +1,10 @@
 package me.heretechsutil.operations;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import me.heretechsutil.HeretechsUtil;
+import me.heretechsutil.entities.PlayerWorldEntity;
+import me.heretechsutil.entities.PlayerWorldTaskEntity;
+import me.heretechsutil.entities.TaskEntity;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -12,7 +14,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -56,24 +61,29 @@ public class DatabaseOperations {
         return false;
     }
 
-    public static boolean playerWorldExists(Player p, World w) {
-        String methodTrace = "DatabaseOperations.playerWorldExists():";
-        try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
-        "SELECT PW.id FROM PlayerWorld PW " +
-            "JOIN Player P ON P.id = PW.idPlayer " +
-            "JOIN World W ON W.id = PW.idWorld " +
-            "WHERE P.UUID = ? AND W.UUID = ?")) {
-            cmd.setString(1, p.getUniqueId().toString());
-            cmd.setString(2, w.getUID().toString());
-            ResultSet rs = cmd.executeQuery();
-            if (rs.next()) {
-                return true;
+    public static boolean playerWorldExists(Player p) {
+        return getPlayerWorldEntityForActiveWorld(p) != null;
+    }
+
+    public static boolean playerWorldTaskExists(Player p) {
+        String methodTrace = "DatabaseOperations.playerWorldTaskExists():";
+        PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
+        if (pw != null) {
+            try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
+                    "SELECT PW.id FROM PlayerWorld PW " +
+                            "JOIN PlayerWorldTask PWT ON PWT.idPlayerWorld = PW.id " +
+                            "WHERE PW.id = ?")) {
+                cmd.setInt(1, pw.getIdPlayerWorld());
+                ResultSet rs = cmd.executeQuery();
+                if (rs.next()) {
+                    return true;
+                }
             }
-        }
-        catch (SQLException e) {
-            util.getLogger().log(Level.SEVERE,
-                    String.format("%s Exception occurred while checking if world %s exists",
-                        methodTrace, w.getName()), e);
+            catch (SQLException e) {
+                util.getLogger().log(Level.SEVERE,
+                        String.format("%s Exception occurred while checking if active world exists for player %s",
+                                methodTrace, p.getName()), e);
+            }
         }
         return false;
     }
@@ -86,7 +96,7 @@ public class DatabaseOperations {
                             "VALUES (?, ?, ?)")) {
                 cmd.setString(1, p.getUniqueId().toString());
                 cmd.setString(2, p.getName());
-                cmd.setInt(3, 0);
+                cmd.setInt(3, 20);
                 cmd.executeUpdate();
                 util.getLogger().info(String.format("%s Player %s created", methodTrace, p.getName()));
             }
@@ -96,7 +106,7 @@ public class DatabaseOperations {
                             methodTrace, p.getName()), e);
             }
         }
-        if (!playerWorldExists(p, p.getWorld()))
+        if (!playerWorldExists(p))
             createPlayerWorldIfNotExists(p, p.getWorld());
     }
 
@@ -123,7 +133,7 @@ public class DatabaseOperations {
 
     public static void createPlayerWorldIfNotExists(Player p, World w) {
         String methodTrace = "DatabaseOperations.createPlayerWorldIfNotExists(): ";
-        if (!playerWorldExists(p, w)) {
+        if (!playerWorldExists(p)) {
             try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                     "INSERT INTO PlayerWorld (idPlayer, idWorld) " +
                             "SELECT P.id, W.id " +
@@ -181,6 +191,29 @@ public class DatabaseOperations {
         return points;
     }
 
+    public static PlayerWorldEntity getPlayerWorldEntityForActiveWorld(Player p) {
+        String methodTrace = "DatabaseOperations.getPlayerWorldEntityForActiveWorld():";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
+                "SELECT WP.id idWP, P.id idP, W.id idW " +
+                        "FROM Player P " +
+                        "JOIN PlayerWorld WP ON WP.idPlayer = P.id " +
+                        "JOIN World W ON W.id = WP.idWorld " +
+                        "WHERE W.Active " +
+                        "AND P.UUID = ?")) {
+            cmd.setString(1, p.getUniqueId().toString());
+            ResultSet rs = cmd.executeQuery();
+            if (rs.next())
+                return new PlayerWorldEntity(rs.getInt("idWP"),
+                        rs.getInt("idP"), rs.getInt("idW"));
+        }
+        catch (SQLException e) {
+            util.getLogger().log(Level.SEVERE,
+                    String.format("%s Exception occurred while assigning tasks to player %s",
+                            methodTrace, p.getName()));
+        }
+        return null;
+    }
+
     // add a positive or negative number to the player's points
     public static void addPointsToPlayer(Player p, int points) {
         String methodTrace = "DatabaseOperations.addPointsToPlayer():";
@@ -216,20 +249,108 @@ public class DatabaseOperations {
             }
             catch (SQLException e) {
                 util.getLogger().log(Level.SEVERE, "Exception occurred while creating tables", e);
+                return;
+            }
+        }
+    }
+
+    public static void createTasks() {
+        String setup = "";
+        try (InputStream in = new FileInputStream("plugins/HeretechsUtil/CreateTasks.sql")) {
+            setup = new BufferedReader(new InputStreamReader(in)).lines().collect(Collectors.joining("\n"));
+        }
+        catch (IOException e) {
+            util.getLogger().log(Level.SEVERE, "Could not read CreateTasks setup files", e);
+        }
+
+        if (!setup.isEmpty()) {
+            try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(setup)) {
+                cmd.executeUpdate();
+            }
+            catch (SQLException e) {
+                util.getLogger().log(Level.SEVERE, "Exception occurred while creating tasks", e);
+            }
+        }
+    }
+
+    public static void createPlayerWorldTasks(Player p) {
+        if (!playerWorldTaskExists(p)) {
+            String methodTrace = "DatabaseOperations.createPlayerWorldTasks():";
+            PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
+            if (pw != null) {
+                try (Connection conn = dataSource.getConnection()) {
+                    PreparedStatement cmd = conn.prepareStatement(
+                            "SELECT T.id, T.TaskDescription, T.Difficulty, T.PointReward " +
+                                    "FROM Task T " +
+                                    "JOIN World W ON W.Active " +
+                                    "JOIN PlayerWorld PW ON PW.idWorld = W.id " +
+                                    "LEFT JOIN Player P ON P.id = PW.idPlayer " +
+                                    "LEFT JOIN PlayerWorldTask PWT ON PWT.idTask = T.id " +
+                                    "WHERE PWT.id IS NULL"
+                    );
+                    List<TaskEntity> tasks = new ArrayList<>();
+                    ResultSet rs = cmd.executeQuery();
+                    while (rs.next()) {
+                        tasks.add(new TaskEntity(rs.getInt("id"), rs.getString("TaskDescription"),
+                                rs.getString("Difficulty"), rs.getInt("PointReward")));
+                    }
+                    List<TaskEntity> easy = tasks.stream().filter(x -> x.getDifficulty()
+                            .equalsIgnoreCase("Easy")).collect(Collectors.toList());
+                    List<TaskEntity> medium = tasks.stream().filter(x -> x.getDifficulty()
+                            .equalsIgnoreCase("Medium")).collect(Collectors.toList());
+                    List<TaskEntity> hard = tasks.stream().filter(x -> x.getDifficulty()
+                            .equalsIgnoreCase("Hard")).collect(Collectors.toList());
+                    List<TaskEntity> playerTasks = new ArrayList<>();
+
+                    Random r = new Random();
+                    for (int i = 0; i < 10; i++) {
+                        if (i >= 8) {
+                            int index = r.nextInt(hard.size());
+                            playerTasks.add(hard.get(index));
+                            hard.remove(index);
+                        }
+                        else if (i >= 4) {
+                            int index = r.nextInt(medium.size());
+                            playerTasks.add(medium.get(index));
+                            medium.remove(index);
+                        }
+                        else {
+                            int index = r.nextInt(easy.size());
+                            playerTasks.add(easy.get(index));
+                            easy.remove(index);
+                        }
+                    }
+
+                    cmd = conn.prepareStatement("INSERT INTO PlayerWorldTask (Completed, Assigned, idTask, idPlayerWorld)" +
+                            " VALUES (?, ?, ?, ?)");
+                    conn.setAutoCommit(false);
+                    for (TaskEntity te : playerTasks) {
+                        cmd.setBoolean(1, false);
+                        cmd.setBoolean(2, true);
+                        cmd.setInt(3, te.getId());
+                        cmd.setInt(4, pw.getIdPlayerWorld());
+                        cmd.addBatch();
+                    }
+                    cmd.executeBatch();
+                    conn.commit();
+
+                }
+                catch (SQLException e) {
+                    util.getLogger().log(Level.SEVERE,
+                            String.format("%s Exception occurred while creating PlayerWorldTasks for player %s",
+                                    methodTrace, p.getName()), e);
+                }
             }
         }
     }
 
     private static DataSource createDataSource() {
-        Properties props = new Properties();
-        props.setProperty("dataSourceClassName", "com.mysql.cj.jdbc.MysqlConnectionPoolDataSource");
-        props.setProperty("dataSource.serverName", util.getConfig().getString("database.host"));
-        props.setProperty("dataSource.portNumber", util.getConfig().getString("database.port"));
-        props.setProperty("dataSource.databaseName", util.getConfig().getString("database.database-name"));
-        props.setProperty("dataSource.user", util.getConfig().getString("database.user"));
-        props.setProperty("dataSource.password", util.getConfig().getString("database.password"));
-
-        HikariConfig config = new HikariConfig(props);
-        return new HikariDataSource(config);
+        MysqlDataSource ds = new MysqlDataSource();
+        ds.setDatabaseName(util.getConfig().getString("database.database-name"));
+        ds.setServerName(util.getConfig().getString("database.host"));
+        ds.setPort(util.getConfig().getInt("database.port"));
+        ds.setUser(util.getConfig().getString("database.user"));
+        ds.setPassword(util.getConfig().getString("database.password"));
+        return ds;
     }
 }

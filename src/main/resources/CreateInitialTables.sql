@@ -22,9 +22,10 @@ CREATE TABLE IF NOT EXISTS PlayerWorld (
 
 CREATE TABLE IF NOT EXISTS Task (
 	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    TaskDescription NVARCHAR(512) NOT NULL,
+    TaskDescription NVARCHAR(256) NOT NULL,
     Difficulty NVARCHAR(32) NOT NULL,
-    PointReward INT NOT NULL
+    PointReward INT NOT NULL,
+    CONSTRAINT U_Task_TaskDescription UNIQUE (TaskDescription)
 );
 
 CREATE TABLE IF NOT EXISTS PlayerWorldTask (

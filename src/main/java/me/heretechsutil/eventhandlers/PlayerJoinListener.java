@@ -13,7 +13,6 @@ public class PlayerJoinListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
         DatabaseOperations.createNewPlayerIfNotExists(p);
-        // TODO: assign tasks
-
+        DatabaseOperations.createPlayerWorldTasks(p);
     }
 }
