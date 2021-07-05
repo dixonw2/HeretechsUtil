@@ -11,3 +11,8 @@ commands:
     usage: /<command> [pay/query] <player> <points>
     default: true
     aliases: [p]
+  task:
+    description: view or redeem your rewards
+    usage: /<command> [view/redeem] [<difficulty>/<task>]
+    default: true
+    aliases: [t]

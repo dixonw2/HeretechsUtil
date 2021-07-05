@@ -1,7 +1,9 @@
 package me.heretechsutil;
 
 import me.heretechsutil.commandexecutors.PointsCommandExecutor;
-import me.heretechsutil.commandexecutors.TabCompleteCommandExecutor;
+import me.heretechsutil.commandexecutors.TabCompletePointsCommandExecutor;
+import me.heretechsutil.commandexecutors.TabCompleteTaskCommandExecutor;
+import me.heretechsutil.commandexecutors.TaskCommandExecutor;
 import me.heretechsutil.eventhandlers.MobTargetListener;
 import me.heretechsutil.eventhandlers.PlayerDeathListener;
 import me.heretechsutil.eventhandlers.PlayerJoinListener;
@@ -15,7 +17,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.sql.Connection;
 import java.util.Properties;
 import java.util.logging.Level;
 
@@ -31,21 +32,24 @@ public final class HeretechsUtil extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(), this);
         getCommand("points").setExecutor(new PointsCommandExecutor());
-        getCommand("points").setTabCompleter(new TabCompleteCommandExecutor());
+        getCommand("points").setTabCompleter(new TabCompletePointsCommandExecutor());
+        getCommand("task").setExecutor(new TaskCommandExecutor());
+        getCommand("task").setTabCompleter(new TabCompleteTaskCommandExecutor());
 
         World currentWorld = this.getServer().getWorld(getCurrentWorld());
         createFiles();
-
+        /*
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         }
         catch (Exception e) {
             getLogger().info(e.getMessage());
-        }
+        }*/
 
         DatabaseOperations.createTablesIfNotExist();
         DatabaseOperations.createNewWorldIfNotExists(currentWorld);
         DatabaseOperations.createTasks();
+        DatabaseOperations.loadPlayers();
     }
 
     @Override

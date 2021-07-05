@@ -5,12 +5,14 @@ public class TaskEntity {
     private String taskDescription;
     private String difficulty;
     private int pointReward;
+    private boolean completed;
 
-    public TaskEntity(int id, String taskDescription, String difficulty, int pointReward) {
+    public TaskEntity(int id, String taskDescription, String difficulty, int pointReward, boolean completed) {
         this.id = id;
         this.taskDescription = taskDescription;
         this.difficulty = difficulty;
         this.pointReward = pointReward;
+        this.completed = completed;
     }
 
     public int getId() {
@@ -44,4 +46,8 @@ public class TaskEntity {
     public void setPointReward(int pointReward) {
         this.pointReward = pointReward;
     }
+
+    public boolean getCompleted() { return completed; }
+
+    public void setCompleted(boolean completed) { this.completed = completed; }
 }

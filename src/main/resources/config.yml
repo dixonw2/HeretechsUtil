@@ -2,9 +2,9 @@
 database:
   host: localhost
   port: 3306
-  database-name: user8863
-  user: user8863
-  password: 3cb66a1cb5
+  database-name: dbname
+  user: username
+  password: password
 
 #mob settings
 

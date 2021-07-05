@@ -2,8 +2,8 @@ package me.heretechsutil.operations;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import me.heretechsutil.HeretechsUtil;
+import me.heretechsutil.entities.PlayerEntity;
 import me.heretechsutil.entities.PlayerWorldEntity;
-import me.heretechsutil.entities.PlayerWorldTaskEntity;
 import me.heretechsutil.entities.TaskEntity;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -14,10 +14,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.Random;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -25,6 +22,7 @@ public class DatabaseOperations {
 
     private static final HeretechsUtil util = HeretechsUtil.getInstance();
     private static final DataSource dataSource = createDataSource();
+    private static final Map<String, PlayerEntity> players = new HashMap<>();
 
     public static boolean playerExists(Player p) {
         String methodTrace = "DatabaseOperations.playerExists():";
@@ -88,17 +86,34 @@ public class DatabaseOperations {
         return false;
     }
 
+    public static List<PlayerEntity> getPlayers() {
+        return new ArrayList<>(players.values());
+    }
+
+    public static PlayerEntity getPlayer(Player p) {
+        return players.get(p.getUniqueId().toString());
+    }
+
     public static void createNewPlayerIfNotExists(Player p) {
         String methodTrace = "DatabaseOperations.createNewPlayerIfNotExists():";
         if (!playerExists(p)) {
-            try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
+            try (Connection conn = dataSource.getConnection()) {
+                PreparedStatement cmd = conn.prepareStatement(
                     "INSERT INTO Player (UUID, PlayerName, Points) " +
-                            "VALUES (?, ?, ?)")) {
+                        "VALUES (?, ?, ?)");
                 cmd.setString(1, p.getUniqueId().toString());
                 cmd.setString(2, p.getName());
                 cmd.setInt(3, 20);
                 cmd.executeUpdate();
                 util.getLogger().info(String.format("%s Player %s created", methodTrace, p.getName()));
+
+                cmd = conn.prepareStatement("SELECT id FROM Player WHERE UUID = ?");
+                cmd.setString(1, p.getUniqueId().toString());
+                ResultSet rs = cmd.executeQuery();
+                if (rs.next()) {
+                    players.put(p.getUniqueId().toString(),
+                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>()));
+                }
             }
             catch (SQLException e) {
                 util.getLogger().log(Level.SEVERE,
@@ -106,8 +121,7 @@ public class DatabaseOperations {
                             methodTrace, p.getName()), e);
             }
         }
-        if (!playerWorldExists(p))
-            createPlayerWorldIfNotExists(p, p.getWorld());
+        createPlayerWorldIfNotExists(p, p.getWorld());
     }
 
     public static void createNewWorldIfNotExists(World w) {
@@ -173,22 +187,12 @@ public class DatabaseOperations {
     }
 
     public static int getPointsForPlayer(Player p) {
-        String methodTrace = "DatabaseOperations.getPointsForPlayer():";
-        int points = 0;
-        try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
-                "SELECT P.Points FROM Player P WHERE P.UUID = ?")) {
-            cmd.setString(1, p.getUniqueId().toString());
-            ResultSet rs = cmd.executeQuery();
+        return players.get(p.getUniqueId().toString()).getPoints();
+    }
 
-            if (rs.next()) {
-                points = rs.getInt("Points");
-            }
-        }
-        catch (SQLException e) {
-            util.getLogger().log(Level.SEVERE, String.format("%s Exception occurred while getting player %s's points",
-                methodTrace, p.getName()), e);
-        }
-        return points;
+    public static TaskEntity getTaskForPlayer(Player p, String description) {
+        return players.get(p.getUniqueId().toString()).getTasks().stream().
+            filter(x -> x.getTaskDescription().equalsIgnoreCase(description)).findFirst().get();
     }
 
     public static PlayerWorldEntity getPlayerWorldEntityForActiveWorld(Player p) {
@@ -214,7 +218,12 @@ public class DatabaseOperations {
         return null;
     }
 
-    // add a positive or negative number to the player's points
+    public static List<TaskEntity> getTasksForPlayer(Player p, String difficulty) {
+        return players.get(p.getUniqueId().toString()).getTasks().stream().
+            filter(x -> difficulty.equalsIgnoreCase("all") ||
+            x.getDifficulty().equalsIgnoreCase(difficulty)).collect(Collectors.toList());
+    }
+
     public static void addPointsToPlayer(Player p, int points) {
         String methodTrace = "DatabaseOperations.addPointsToPlayer():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
@@ -222,6 +231,8 @@ public class DatabaseOperations {
             cmd.setInt(1, points);
             cmd.setString(2, p.getUniqueId().toString());
             cmd.executeUpdate();
+            PlayerEntity pe = players.get(p.getUniqueId().toString());
+            pe.setPoints(pe.getPoints() + points);
             util.getLogger().info(String.format("%s Updated %s's points",
                     methodTrace, p.getName()));
         }
@@ -229,6 +240,35 @@ public class DatabaseOperations {
             util.getLogger().log(Level.SEVERE, String.format("%s Exception occurred while %s %d points %s %s",
                     methodTrace, points >= 0 ? "adding" : "subtracting", points,
                     points >= 0 ? "to" : "from", p.getName()), e);
+        }
+    }
+
+    public static void redeemTask(Player p, TaskEntity task) {
+        String methodTrace = "DatabaseOperations.redeemTask():";
+        PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
+        if (pw != null) {
+            try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
+                "UPDATE PlayerWorldTask PWT " +
+                    "JOIN PlayerWorld PW ON PW.id = PWT.idPlayerWorld " +
+                    "JOIN Task T ON T.id = PWT.idTask " +
+                    "SET Completed = true " +
+                    "WHERE PW.id = ? " +
+                    "AND T.TaskDescription = ?")) {
+                cmd.setInt(1, pw.getIdPlayerWorld());
+                cmd.setString(2, task.getTaskDescription());
+                cmd.executeUpdate();
+
+                addPointsToPlayer(p, task.getPointReward());
+                players.get(p.getUniqueId().toString()).getTasks().stream().
+                    filter(x -> x.getTaskDescription().equalsIgnoreCase(task.getTaskDescription())).findFirst().get().setCompleted(true);
+                util.getLogger().info(String.format("%s %s redeemed task [%s] and received %d points",
+                    methodTrace, p.getName(), task.getTaskDescription(), task.getPointReward()));
+            }
+            catch (SQLException e) {
+                util.getLogger().log(Level.SEVERE,
+                    String.format("%s Exception occurred while redeeming task %s for player %s",
+                    methodTrace, task.getTaskDescription(), p.getName()), e);
+            }
         }
     }
 
@@ -276,72 +316,121 @@ public class DatabaseOperations {
     public static void createPlayerWorldTasks(Player p) {
         if (!playerWorldTaskExists(p)) {
             String methodTrace = "DatabaseOperations.createPlayerWorldTasks():";
-            PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
-            if (pw != null) {
-                try (Connection conn = dataSource.getConnection()) {
-                    PreparedStatement cmd = conn.prepareStatement(
-                            "SELECT T.id, T.TaskDescription, T.Difficulty, T.PointReward " +
-                                    "FROM Task T " +
-                                    "JOIN World W ON W.Active " +
-                                    "JOIN PlayerWorld PW ON PW.idWorld = W.id " +
-                                    "LEFT JOIN Player P ON P.id = PW.idPlayer " +
-                                    "LEFT JOIN PlayerWorldTask PWT ON PWT.idTask = T.id " +
-                                    "WHERE PWT.id IS NULL"
-                    );
-                    List<TaskEntity> tasks = new ArrayList<>();
-                    ResultSet rs = cmd.executeQuery();
-                    while (rs.next()) {
-                        tasks.add(new TaskEntity(rs.getInt("id"), rs.getString("TaskDescription"),
-                                rs.getString("Difficulty"), rs.getInt("PointReward")));
-                    }
-                    List<TaskEntity> easy = tasks.stream().filter(x -> x.getDifficulty()
-                            .equalsIgnoreCase("Easy")).collect(Collectors.toList());
-                    List<TaskEntity> medium = tasks.stream().filter(x -> x.getDifficulty()
-                            .equalsIgnoreCase("Medium")).collect(Collectors.toList());
-                    List<TaskEntity> hard = tasks.stream().filter(x -> x.getDifficulty()
-                            .equalsIgnoreCase("Hard")).collect(Collectors.toList());
-                    List<TaskEntity> playerTasks = new ArrayList<>();
-
-                    Random r = new Random();
-                    for (int i = 0; i < 10; i++) {
-                        if (i >= 8) {
-                            int index = r.nextInt(hard.size());
-                            playerTasks.add(hard.get(index));
-                            hard.remove(index);
+            if (!players.containsKey(p.getUniqueId().toString())) {
+                PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
+                if (pw != null) {
+                    try (Connection conn = dataSource.getConnection()) {
+                        PreparedStatement cmd = conn.prepareStatement(
+                                "SELECT T.id, T.TaskDescription, T.Difficulty, T.PointReward " +
+                                        "FROM Task T " +
+                                        "JOIN World W ON W.Active " +
+                                        "JOIN PlayerWorld PW ON PW.idWorld = W.id " +
+                                        "JOIN Player P ON P.id = PW.idPlayer AND P.UUID = ? " +
+                                        "LEFT JOIN PlayerWorldTask PWT ON PWT.idTask = T.id " +
+                                        "WHERE PWT.id IS NULL"
+                        );
+                        cmd.setString(1, p.getUniqueId().toString());
+                        List<TaskEntity> tasks = new ArrayList<>();
+                        ResultSet rs = cmd.executeQuery();
+                        while (rs.next()) {
+                            tasks.add(new TaskEntity(rs.getInt("id"), rs.getString("TaskDescription"),
+                                    rs.getString("Difficulty"), rs.getInt("PointReward"), false));
                         }
-                        else if (i >= 4) {
-                            int index = r.nextInt(medium.size());
-                            playerTasks.add(medium.get(index));
-                            medium.remove(index);
-                        }
-                        else {
-                            int index = r.nextInt(easy.size());
-                            playerTasks.add(easy.get(index));
-                            easy.remove(index);
-                        }
-                    }
+                        List<TaskEntity> easy = tasks.stream().filter(x -> x.getDifficulty()
+                                .equalsIgnoreCase("Easy")).collect(Collectors.toList());
+                        List<TaskEntity> medium = tasks.stream().filter(x -> x.getDifficulty()
+                                .equalsIgnoreCase("Medium")).collect(Collectors.toList());
+                        List<TaskEntity> hard = tasks.stream().filter(x -> x.getDifficulty()
+                                .equalsIgnoreCase("Hard")).collect(Collectors.toList());
+                        List<TaskEntity> playerTasks = new ArrayList<>();
 
-                    cmd = conn.prepareStatement("INSERT INTO PlayerWorldTask (Completed, Assigned, idTask, idPlayerWorld)" +
-                            " VALUES (?, ?, ?, ?)");
-                    conn.setAutoCommit(false);
-                    for (TaskEntity te : playerTasks) {
-                        cmd.setBoolean(1, false);
-                        cmd.setBoolean(2, true);
-                        cmd.setInt(3, te.getId());
-                        cmd.setInt(4, pw.getIdPlayerWorld());
-                        cmd.addBatch();
-                    }
-                    cmd.executeBatch();
-                    conn.commit();
+                        Random r = new Random();
+                        for (int i = 0; i < 10; i++) {
+                            if (i >= 8) {
+                                int index = r.nextInt(hard.size());
+                                playerTasks.add(hard.get(index));
+                                hard.remove(index);
+                            }
+                            else if (i >= 4) {
+                                int index = r.nextInt(medium.size());
+                                playerTasks.add(medium.get(index));
+                                medium.remove(index);
+                            }
+                            else {
+                                int index = r.nextInt(easy.size());
+                                playerTasks.add(easy.get(index));
+                                easy.remove(index);
+                            }
+                        }
 
-                }
-                catch (SQLException e) {
-                    util.getLogger().log(Level.SEVERE,
-                            String.format("%s Exception occurred while creating PlayerWorldTasks for player %s",
-                                    methodTrace, p.getName()), e);
+                        cmd = conn.prepareStatement("INSERT INTO PlayerWorldTask (Completed, Assigned, idTask, idPlayerWorld)" +
+                                " VALUES (?, ?, ?, ?)");
+                        conn.setAutoCommit(false);
+                        for (TaskEntity te : playerTasks) {
+                            cmd.setBoolean(1, false);
+                            cmd.setBoolean(2, true);
+                            cmd.setInt(3, te.getId());
+                            cmd.setInt(4, pw.getIdPlayerWorld());
+                            cmd.addBatch();
+                        }
+                        cmd.executeBatch();
+                        conn.commit();
+
+                        players.get(p.getUniqueId().toString()).setTasks(playerTasks);
+                    }
+                    catch (SQLException e) {
+                        util.getLogger().log(Level.SEVERE,
+                                String.format("%s Exception occurred while creating PlayerWorldTasks for player %s",
+                                        methodTrace, p.getName()), e);
+                    }
                 }
             }
+
         }
+    }
+
+    public static void loadPlayers() {
+        String methodTrace = "DatabaseOperations.loadPlayers():";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
+            "SELECT P.id, P.UUID, P.PlayerName, P.Points " +
+                "FROM Player P")) {
+            ResultSet rs = cmd.executeQuery();
+            while (rs.next()) {
+                players.put(rs.getString("UUID"),
+                    new PlayerEntity(rs.getInt("id"), rs.getString("UUID"),
+                        rs.getString("PlayerName"),
+                        rs.getInt("Points"), loadTasksForPlayer(rs.getInt("id"))));
+                util.getLogger().info(String.format("Loaded player %s", rs.getString("PlayerName")));
+            }
+        }
+        catch (SQLException e) {
+            util.getLogger().log(Level.SEVERE, String.format("%s Exception occurred while loading players", methodTrace));
+        }
+    }
+
+    private static List<TaskEntity> loadTasksForPlayer(int playerId) {
+        String methodTrace = "DatabaseOperations.loadTasksForPlayer():";
+        List<TaskEntity> tasks = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
+                "SELECT T.id, T.TaskDescription, T.Difficulty, T.PointReward, PWT.Completed " +
+                "FROM PlayerWorld PW " +
+                "JOIN World W ON W.id = PW.idWorld AND W.Active " +
+                "JOIN PlayerWorldTask PWT ON PWT.idPlayerWorld = PW.id " +
+                "JOIN Task T ON T.id = PWT.idTask " +
+                "WHERE PW.idPlayer = ?")) {
+            cmd.setInt(1, playerId);
+            ResultSet rs = cmd.executeQuery();
+
+            while (rs.next()) {
+                tasks.add(new TaskEntity(rs.getInt("id"), rs.getString("TaskDescription"),
+                    rs.getString("Difficulty"), rs.getInt("PointReward"), rs.getBoolean("Completed")));
+            }
+        }
+        catch (SQLException e) {
+            util.getLogger().log(Level.SEVERE,
+                String.format("%s Exception occurred while loading tasks for player with id %d", methodTrace, playerId));
+        }
+        return tasks;
     }
 
     private static DataSource createDataSource() {
