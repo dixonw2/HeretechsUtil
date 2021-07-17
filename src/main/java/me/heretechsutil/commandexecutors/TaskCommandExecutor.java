@@ -56,6 +56,7 @@ public class TaskCommandExecutor implements CommandExecutor {
                 return true;
             }
             p.sendMessage(ChatColor.RED + String.format("Usage: /%s {view/redeem} <difficulty> <task>", alias));
+            return true;
         }
         else {
             sender.sendMessage("The console cannot run this command");

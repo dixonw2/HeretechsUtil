@@ -69,8 +69,7 @@ public class DatabaseOperations {
         if (pw != null) {
             try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                     "SELECT PW.id FROM PlayerWorld PW " +
-                            "JOIN PlayerWorldTask PWT ON PWT.idPlayerWorld = PW.id " +
-                            "WHERE PW.id = ?")) {
+                            "JOIN PlayerWorldTask PWT ON PWT.idPlayerWorld = ?")) {
                 cmd.setInt(1, pw.getIdPlayerWorld());
                 ResultSet rs = cmd.executeQuery();
                 if (rs.next()) {
@@ -249,10 +248,9 @@ public class DatabaseOperations {
         if (pw != null) {
             try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                 "UPDATE PlayerWorldTask PWT " +
-                    "JOIN PlayerWorld PW ON PW.id = PWT.idPlayerWorld " +
                     "JOIN Task T ON T.id = PWT.idTask " +
                     "SET Completed = true " +
-                    "WHERE PW.id = ? " +
+                    "WHERE PWT.idPlayerWorld = ? " +
                     "AND T.TaskDescription = ?")) {
                 cmd.setInt(1, pw.getIdPlayerWorld());
                 cmd.setString(2, task.getTaskDescription());
@@ -316,7 +314,7 @@ public class DatabaseOperations {
     public static void createPlayerWorldTasks(Player p) {
         if (!playerWorldTaskExists(p)) {
             String methodTrace = "DatabaseOperations.createPlayerWorldTasks():";
-            if (!players.containsKey(p.getUniqueId().toString())) {
+            if (players.containsKey(p.getUniqueId().toString()) && players.get(p.getUniqueId().toString()).getTasks().isEmpty()) {
                 PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
                 if (pw != null) {
                     try (Connection conn = dataSource.getConnection()) {
@@ -326,7 +324,7 @@ public class DatabaseOperations {
                                         "JOIN World W ON W.Active " +
                                         "JOIN PlayerWorld PW ON PW.idWorld = W.id " +
                                         "JOIN Player P ON P.id = PW.idPlayer AND P.UUID = ? " +
-                                        "LEFT JOIN PlayerWorldTask PWT ON PWT.idTask = T.id " +
+                                        "LEFT JOIN PlayerWorldTask PWT ON PWT.idTask = T.id AND PWT.idPlayerWorld = PW.id " +
                                         "WHERE PWT.id IS NULL"
                         );
                         cmd.setString(1, p.getUniqueId().toString());
