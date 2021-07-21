@@ -18,6 +18,11 @@ import static org.bukkit.Bukkit.getLogger;
 
 public class MobTargetListener implements Listener {
 
+    private static final String[] names = new String[] { "Timmy", "Jerry", "Miranda", "Jacob", "Harry", "Wyatt",
+        "Kristen", "Samuel", "Brandon", "Henry", "Logan", "Alexander", "Benjamin", "Joe", "Carly", "Sam", "Freddie" };
+    private static final String[] titles = new String[] { "Undesirable", "Unfair", "Hungry", "Cool", "Adequate",
+        "Hotdog", "Depressed", "Mad", "Furry", "Messy", "Sloppy Joe", "Foot" };
+
     @EventHandler
     public void onEntityTarget(EntityTargetLivingEntityEvent event) {
         int time = HeretechsUtil.getInstance().getConfig().getInt("multiplier-time");
@@ -30,7 +35,6 @@ public class MobTargetListener implements Listener {
                 // 20 ticks a second, 3600 seconds an hour
                 long timeInHours = (p.getStatistic(Statistic.TOTAL_WORLD_TIME) / 20) / 3600;
                 double multiplier = timeInHours / (double) time;
-                //double multiplier = 25;
                 if (multiplier > 1) {
                     double maxMultiplier = HeretechsUtil.getInstance().getConfig().getDouble("max-multiplier");
                     if (multiplier > maxMultiplier && maxMultiplier != 0)
@@ -39,26 +43,23 @@ public class MobTargetListener implements Listener {
                     Random ran = new Random();
                     if (ran.nextInt(10) == 0) {
                         Monster mob = (Monster) attacker;
+                        mob.setCustomName(String.format("%s the %s", names[ran.nextInt(names.length)], titles[ran.nextInt(titles.length)]));
                         if (!(mob instanceof Creeper) || !(mob instanceof AbstractSkeleton))
                             mob.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).setBaseValue(
-                                    mob.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() * multiplier);
+                                mob.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() * multiplier);
 
-                        if (mob instanceof Zombie && multiplier >= 2)
+                        if (mob instanceof Zombie && multiplier >= 1.5)
                             mob.getAttribute(Attribute.ZOMBIE_SPAWN_REINFORCEMENTS).setBaseValue(
-                                    mob.getAttribute(Attribute.ZOMBIE_SPAWN_REINFORCEMENTS).getValue() * 6);
+                                mob.getAttribute(Attribute.ZOMBIE_SPAWN_REINFORCEMENTS).getValue() * 10  );
 
-                        if (mob instanceof Skeleton && multiplier >= 2)
+                        if (mob instanceof Skeleton && multiplier >= 1.5)
                             mob.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 3));
 
-                        if (mob instanceof Spider && multiplier >= 2) {
+                        if (mob instanceof Spider && multiplier >= 1.5) {
                             mob.addPotionEffect(
-                                    new PotionEffect(PotionEffectType.REGENERATION, Integer.MAX_VALUE, 4));
+                                new PotionEffect(PotionEffectType.REGENERATION, Integer.MAX_VALUE, 2));
                             mob.addPotionEffect(
-                                    new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, Integer.MAX_VALUE, 2));
-                        }
-
-                        if (mob instanceof Blaze && multiplier >= 2) {
-
+                                new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, Integer.MAX_VALUE, 1));
                         }
                     }
                 }

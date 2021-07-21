@@ -6,6 +6,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,7 +17,7 @@ public class TabCompleteTaskCommandExecutor implements TabCompleter {
     private static final String[] subCommandsViewTasks = { "easy", "medium", "hard", "all" };
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String alias, String[] args) {
         List<String> options = new ArrayList<>();
 
         if (sender instanceof Player) {
@@ -35,7 +36,7 @@ public class TabCompleteTaskCommandExecutor implements TabCompleter {
                 }
                 return options;
             }
-            else if (args.length >= 3 && args[0].equalsIgnoreCase("redeem")) {
+            else if (args.length >= 3 && args.length <= 5 && args[0].equalsIgnoreCase("redeem")) {
                 StringBuilder sb = new StringBuilder();
                 for (int i = 2; i < args.length; i++) {
                     sb.append(args[i]);
