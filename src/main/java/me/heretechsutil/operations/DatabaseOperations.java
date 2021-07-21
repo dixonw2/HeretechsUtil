@@ -111,7 +111,7 @@ public class DatabaseOperations {
                 ResultSet rs = cmd.executeQuery();
                 if (rs.next()) {
                     players.put(p.getUniqueId().toString(),
-                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>()));
+                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>(), 0));
                 }
             }
             catch (SQLException e) {
@@ -185,7 +185,25 @@ public class DatabaseOperations {
         }
     }
 
-    public static int getPointsForPlayer(Player p) {
+    public static void updatePlayerLives(Player p, int life) {
+        String methodTrace = "DatabaseOperations.updatePlayerLives():";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
+                "UPDATE Player p SET p.Lives = p.Lives + ? WHERE UUID = ?")) {
+            cmd.setInt(1, life);
+            cmd.setString(2, p.getUniqueId().toString());
+            cmd.executeUpdate();
+            PlayerEntity player = getPlayer(p);
+            player.setLives(player.getLives() + life);
+            util.getLogger().info(String.format("%s Updated %s's lives",
+                    methodTrace, p.getName()));
+        }
+        catch (SQLException e) {
+            util.getLogger().log(Level.SEVERE,
+                    String.format("%s Exception occurred while updating %s's lives", methodTrace, p.getName()), e);
+        }
+    }
+
+    public static double getPointsForPlayer(Player p) {
         return players.get(p.getUniqueId().toString()).getPoints();
     }
 
@@ -223,11 +241,11 @@ public class DatabaseOperations {
             x.getDifficulty().equalsIgnoreCase(difficulty)).collect(Collectors.toList());
     }
 
-    public static void addPointsToPlayer(Player p, int points) {
+    public static void addPointsToPlayer(Player p, double points) {
         String methodTrace = "DatabaseOperations.addPointsToPlayer():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                 "UPDATE Player p SET p.Points = p.Points + ? WHERE p.UUID = ?")) {
-            cmd.setInt(1, points);
+            cmd.setDouble(1, points);
             cmd.setString(2, p.getUniqueId().toString());
             cmd.executeUpdate();
             PlayerEntity pe = players.get(p.getUniqueId().toString());
@@ -236,7 +254,7 @@ public class DatabaseOperations {
                     methodTrace, p.getName()));
         }
         catch (SQLException e) {
-            util.getLogger().log(Level.SEVERE, String.format("%s Exception occurred while %s %d points %s %s",
+            util.getLogger().log(Level.SEVERE, String.format("%s Exception occurred while %s %.2f points %s %s",
                     methodTrace, points >= 0 ? "adding" : "subtracting", points,
                     points >= 0 ? "to" : "from", p.getName()), e);
         }
@@ -390,14 +408,14 @@ public class DatabaseOperations {
     public static void loadPlayers() {
         String methodTrace = "DatabaseOperations.loadPlayers():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
-            "SELECT P.id, P.UUID, P.PlayerName, P.Points " +
+            "SELECT P.id, P.UUID, P.PlayerName, P.Points, P.Lives " +
                 "FROM Player P")) {
             ResultSet rs = cmd.executeQuery();
             while (rs.next()) {
                 players.put(rs.getString("UUID"),
                     new PlayerEntity(rs.getInt("id"), rs.getString("UUID"),
                         rs.getString("PlayerName"),
-                        rs.getInt("Points"), loadTasksForPlayer(rs.getInt("id"))));
+                        rs.getInt("Points"), loadTasksForPlayer(rs.getInt("id")), rs.getInt("Lives")));
                 util.getLogger().info(String.format("Loaded player %s", rs.getString("PlayerName")));
             }
         }
@@ -440,4 +458,5 @@ public class DatabaseOperations {
         ds.setPassword(util.getConfig().getString("database.password"));
         return ds;
     }
+
 }

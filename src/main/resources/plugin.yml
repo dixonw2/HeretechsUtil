@@ -8,11 +8,16 @@ author: FleetingDream
 commands:
   points:
     description: pay a player or query your points
-    usage: /<command> [pay/query] <player> <points>
+    usage: /<command> [pay/query] [player] [points]
     default: true
     aliases: [p]
   task:
     description: view or redeem your rewards
-    usage: /<command> [view/redeem] [<difficulty>/<task>]
+    usage: /<command> [view/redeem] [difficulty] [task]
     default: true
     aliases: [t]
+  buy:
+    description: buy items using points
+    usage: /<command> [item] [quantity]
+    default: true
+    aliases: [b]

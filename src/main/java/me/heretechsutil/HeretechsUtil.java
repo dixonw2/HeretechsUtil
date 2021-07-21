@@ -1,12 +1,10 @@
 package me.heretechsutil;
 
-import me.heretechsutil.commandexecutors.PointsCommandExecutor;
-import me.heretechsutil.commandexecutors.TabCompletePointsCommandExecutor;
-import me.heretechsutil.commandexecutors.TabCompleteTaskCommandExecutor;
-import me.heretechsutil.commandexecutors.TaskCommandExecutor;
+import me.heretechsutil.commandexecutors.*;
 import me.heretechsutil.eventhandlers.MobTargetListener;
-import me.heretechsutil.eventhandlers.PlayerDeathListener;
+import me.heretechsutil.eventhandlers.PlayerDamagedListener;
 import me.heretechsutil.eventhandlers.PlayerJoinListener;
+import me.heretechsutil.operations.ConfigOperations;
 import me.heretechsutil.operations.DatabaseOperations;
 import org.bukkit.World;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -29,27 +27,23 @@ public final class HeretechsUtil extends JavaPlugin {
         // Plugin startup logic
         instance = this;
         getServer().getPluginManager().registerEvents(new MobTargetListener(), this);
-        getServer().getPluginManager().registerEvents(new PlayerDeathListener(), this);
+        getServer().getPluginManager().registerEvents(new PlayerDamagedListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(), this);
         getCommand("points").setExecutor(new PointsCommandExecutor());
         getCommand("points").setTabCompleter(new TabCompletePointsCommandExecutor());
         getCommand("task").setExecutor(new TaskCommandExecutor());
         getCommand("task").setTabCompleter(new TabCompleteTaskCommandExecutor());
+        getCommand("buy").setExecutor(new BuyCommandExecutor());
+        getCommand("buy").setTabCompleter(new TabCompleteBuyCommandExecutor());
 
         World currentWorld = this.getServer().getWorld(getCurrentWorld());
         createFiles();
-        /*
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        }
-        catch (Exception e) {
-            getLogger().info(e.getMessage());
-        }*/
 
         DatabaseOperations.createTablesIfNotExist();
         DatabaseOperations.createNewWorldIfNotExists(currentWorld);
         DatabaseOperations.createTasks();
         DatabaseOperations.loadPlayers();
+        ConfigOperations.loadBuyables();
     }
 
     @Override
@@ -72,10 +66,6 @@ public final class HeretechsUtil extends JavaPlugin {
 
         saveResource("CreateInitialTables.sql", true);
         saveResource("CreateTasks.sql", true);
-        /*if (!createTables.exists()) {
-            createTables.getParentFile().mkdirs();
-            saveResource("CreateInitialTables.sql", false);
-        }*/
         FileConfiguration config = new YamlConfiguration();
         try {
             config.load(configf);

@@ -1,21 +1,23 @@
 package me.heretechsutil.entities;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerEntity {
     private int id;
     private String UUID;
     private String playerName;
-    private int points;
-    private List<TaskEntity> tasks = new ArrayList<>();
+    private double points;
+    private List<TaskEntity> tasks;
 
-    public PlayerEntity(int id, String UUID, String playerName, int points, List<TaskEntity> tasks) {
+    private int lives;
+
+    public PlayerEntity(int id, String UUID, String playerName, int points, List<TaskEntity> tasks, int lives) {
         this.id = id;
         this.UUID = UUID;
         this.playerName = playerName;
         this.points = points;
         this.tasks = tasks;
+        this.lives = lives;
     }
 
     public int getId() {
@@ -42,11 +44,11 @@ public class PlayerEntity {
         this.playerName = playerName;
     }
 
-    public int getPoints() {
+    public double getPoints() {
         return points;
     }
 
-    public void setPoints(int points) {
+    public void setPoints(double points) {
         this.points = points;
     }
 
@@ -56,5 +58,13 @@ public class PlayerEntity {
 
     public void setTasks(List<TaskEntity> tasks) {
         this.tasks = tasks;
+    }
+
+    public int getLives() {
+        return lives;
+    }
+
+    public void setLives(int lives) {
+        this.lives = lives;
     }
 }
