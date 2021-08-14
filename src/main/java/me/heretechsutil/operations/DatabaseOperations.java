@@ -112,7 +112,7 @@ public class DatabaseOperations {
                 ResultSet rs = cmd.executeQuery();
                 if (rs.next()) {
                     players.put(p.getUniqueId().toString(),
-                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>(), 0));
+                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>(), 1));
                 }
             }
             catch (SQLException e) {
@@ -158,6 +158,10 @@ public class DatabaseOperations {
                 cmd.setBoolean(2, true);
                 cmd.setString(3, p.getUniqueId().toString());
                 cmd.executeUpdate();
+
+                // player gets an extra life at the beginning of every world
+                updatePlayerLives(p, 1);
+
 
                 util.getLogger().info(String.format("%s PlayerWorld created for player %s, world %s",
                         methodTrace, p.getName(), w.getName()));
