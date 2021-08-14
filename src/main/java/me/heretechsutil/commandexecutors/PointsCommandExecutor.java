@@ -35,7 +35,8 @@ public class PointsCommandExecutor implements CommandExecutor {
                         return true;
                     }
                     try {
-                        double amount = Double.parseDouble(args[2]);
+                        // two decimal places
+                        double amount = Math.round(Double.parseDouble(args[2]) * 100.0) / 100.0;
                         double currentPlayerPoints = DatabaseOperations.getPointsForPlayer(p);
                         if (amount <= 0) {
                             p.sendMessage(ChatColor.RED + "Amount must be positive");
@@ -49,15 +50,15 @@ public class PointsCommandExecutor implements CommandExecutor {
                         DatabaseOperations.addPointsToPlayer(target, amount);
                         DatabaseOperations.addPointsToPlayer(p, -amount);
                         p.sendMessage(ChatColor.AQUA +
-                            String.format("You paid %s %f point%s", target.getName(), amount, amount == 1 ? "" : "s"));
+                            String.format("You paid %s %.2f point%s", target.getName(), amount, amount == 1 ? "" : "s"));
                         p.sendMessage(ChatColor.AQUA +
-                            String.format("You now have %f point%s", currentPlayerPoints - amount,
+                            String.format("You now have %.2f point%s", currentPlayerPoints - amount,
                                 currentPlayerPoints - amount == 1 ? "" : "s"));
                         target.sendMessage(ChatColor.AQUA +
-                            String.format("%s paid you %f point%s", p.getName(), amount, amount == 1 ? "" : "s"));
+                            String.format("%s paid you %.2f point%s", p.getName(), amount, amount == 1 ? "" : "s"));
                         double targetPoints = DatabaseOperations.getPointsForPlayer(target);
                         target.sendMessage(ChatColor.AQUA +
-                            String.format("You now have %f point%s", targetPoints, targetPoints == 1 ? "" : "s"));
+                            String.format("You now have %.2f point%s", targetPoints, targetPoints == 1 ? "" : "s"));
                         return true;
                     }
                     catch (NumberFormatException e) {

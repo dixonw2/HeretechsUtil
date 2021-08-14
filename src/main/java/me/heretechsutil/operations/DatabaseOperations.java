@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 
 import javax.sql.DataSource;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -208,8 +209,12 @@ public class DatabaseOperations {
     }
 
     public static TaskEntity getTaskForPlayer(Player p, String description) {
-        return players.get(p.getUniqueId().toString()).getTasks().stream().
-            filter(x -> x.getTaskDescription().equalsIgnoreCase(description)).findFirst().get();
+        List<TaskEntity> list = players.get(p.getUniqueId().toString()).getTasks().stream().
+                filter(x -> x.getTaskDescription().equalsIgnoreCase(description)).collect(Collectors.toList());
+        if (list.size() != 1) {
+            return null;
+        }
+        return list.get(0);
     }
 
     public static PlayerWorldEntity getPlayerWorldEntityForActiveWorld(Player p) {
@@ -263,13 +268,15 @@ public class DatabaseOperations {
     public static void redeemTask(Player p, TaskEntity task) {
         String methodTrace = "DatabaseOperations.redeemTask():";
         PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
-        if (pw != null) {
+        if (pw != null && !players.get(p.getUniqueId().toString()).getTasks().stream().
+                filter(x -> x.getTaskDescription().equalsIgnoreCase(task.getTaskDescription())).findFirst().get().getCompleted()) {
             try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
                 "UPDATE PlayerWorldTask PWT " +
                     "JOIN Task T ON T.id = PWT.idTask " +
                     "SET Completed = true " +
                     "WHERE PWT.idPlayerWorld = ? " +
-                    "AND T.TaskDescription = ?")) {
+                    "AND T.TaskDescription = ? " +
+                    "AND PWT.Completed <> true")) {
                 cmd.setInt(1, pw.getIdPlayerWorld());
                 cmd.setString(2, task.getTaskDescription());
                 cmd.executeUpdate();
@@ -352,35 +359,42 @@ public class DatabaseOperations {
                             tasks.add(new TaskEntity(rs.getInt("id"), rs.getString("TaskDescription"),
                                     rs.getString("Difficulty"), rs.getInt("PointReward"), false));
                         }
-                        List<TaskEntity> easy = tasks.stream().filter(x -> x.getDifficulty()
-                                .equalsIgnoreCase("Easy")).collect(Collectors.toList());
-                        List<TaskEntity> medium = tasks.stream().filter(x -> x.getDifficulty()
-                                .equalsIgnoreCase("Medium")).collect(Collectors.toList());
-                        List<TaskEntity> hard = tasks.stream().filter(x -> x.getDifficulty()
-                                .equalsIgnoreCase("Hard")).collect(Collectors.toList());
+                        List<TaskEntity> progression = tasks.stream().filter(x -> x.getDifficulty().
+                            equalsIgnoreCase("progression")).collect(Collectors.toList());
+                        List<TaskEntity> easy = tasks.stream().filter(x -> x.getDifficulty().
+                            equalsIgnoreCase("easy")).collect(Collectors.toList());
+                        List<TaskEntity> medium = tasks.stream().filter(x -> x.getDifficulty().
+                            equalsIgnoreCase("medium")).collect(Collectors.toList());
+                        List<TaskEntity> hard = tasks.stream().filter(x -> x.getDifficulty().
+                            equalsIgnoreCase("hard")).collect(Collectors.toList());
                         List<TaskEntity> playerTasks = new ArrayList<>();
 
                         Random r = new Random();
-                        for (int i = 0; i < 10; i++) {
-                            if (i >= 8) {
+                        for (int i = 0; i < 30; i++) {
+                            if (i >= 27) {
                                 int index = r.nextInt(hard.size());
                                 playerTasks.add(hard.get(index));
                                 hard.remove(index);
                             }
-                            else if (i >= 4) {
+                            else if (i >= 22) {
                                 int index = r.nextInt(medium.size());
                                 playerTasks.add(medium.get(index));
                                 medium.remove(index);
                             }
-                            else {
+                            else if (i >= 15) {
                                 int index = r.nextInt(easy.size());
                                 playerTasks.add(easy.get(index));
                                 easy.remove(index);
                             }
+                            else {
+                                int index = r.nextInt(progression.size());
+                                playerTasks.add(progression.get(index));
+                                progression.remove(index);
+                            }
                         }
 
                         cmd = conn.prepareStatement("INSERT INTO PlayerWorldTask (Completed, Assigned, idTask, idPlayerWorld)" +
-                                " VALUES (?, ?, ?, ?)");
+                            " VALUES (?, ?, ?, ?)");
                         conn.setAutoCommit(false);
                         for (TaskEntity te : playerTasks) {
                             cmd.setBoolean(1, false);
@@ -412,11 +426,12 @@ public class DatabaseOperations {
                 "FROM Player P")) {
             ResultSet rs = cmd.executeQuery();
             while (rs.next()) {
-                players.put(rs.getString("UUID"),
-                    new PlayerEntity(rs.getInt("id"), rs.getString("UUID"),
-                        rs.getString("PlayerName"),
-                        rs.getInt("Points"), loadTasksForPlayer(rs.getInt("id")), rs.getInt("Lives")));
-                util.getLogger().info(String.format("Loaded player %s", rs.getString("PlayerName")));
+                PlayerEntity pe = new PlayerEntity(rs.getInt("id"), rs.getString("UUID"),
+                    rs.getString("PlayerName"),
+                    rs.getInt("Points"), loadTasksForPlayer(rs.getInt("id")), rs.getInt("Lives"));
+                players.put(rs.getString("UUID"), pe);
+                util.getLogger().info(String.format("Loaded player %s with %.2f points and %d lives",
+                    pe.getPlayerName(), pe.getPoints(), pe.getLives()));
             }
         }
         catch (SQLException e) {
@@ -433,7 +448,8 @@ public class DatabaseOperations {
                 "JOIN World W ON W.id = PW.idWorld AND W.Active " +
                 "JOIN PlayerWorldTask PWT ON PWT.idPlayerWorld = PW.id " +
                 "JOIN Task T ON T.id = PWT.idTask " +
-                "WHERE PW.idPlayer = ?")) {
+                "WHERE PW.idPlayer = ? " +
+                "ORDER BY FIELD(T.Difficulty, 'Progression', 'Easy', 'Medium', 'Hard')")) {
             cmd.setInt(1, playerId);
             ResultSet rs = cmd.executeQuery();
 

@@ -26,13 +26,17 @@ public class TaskCommandExecutor implements CommandExecutor {
                     results.stream().filter(TaskEntity::getCompleted).forEach(sortedResults::add);
                     results.stream().filter(x -> !x.getCompleted()).forEach(sortedResults::add);
                     sortedResults.forEach(x -> p.sendMessage(String.format("%s%s[%s]%s %s%s: %d point%s",
-                        x.getDifficulty().equalsIgnoreCase("easy") ? ChatColor.GREEN :
+                        x.getDifficulty().equalsIgnoreCase("progression") ? ChatColor.LIGHT_PURPLE :
+                            x.getDifficulty().equalsIgnoreCase("easy") ? ChatColor.GREEN :
                             x.getDifficulty().equalsIgnoreCase("medium") ? ChatColor.YELLOW : ChatColor.RED,
                         x.getCompleted() ? ChatColor.STRIKETHROUGH : "",
                         x.getDifficulty(),
                         ChatColor.AQUA,
                         x.getCompleted() ? ChatColor.STRIKETHROUGH : "",
                         x.getTaskDescription(), x.getPointReward(), x.getPointReward() == 1 ? "" : "s")));
+                }
+                else if (args[0].equalsIgnoreCase("redeem")) {
+                    p.sendMessage(ChatColor.RED + String.format("Usage: /%s {view/redeem} <difficulty> <task>", alias));
                 }
                 return true;
             }
@@ -45,10 +49,16 @@ public class TaskCommandExecutor implements CommandExecutor {
                     }
                 }
                 TaskEntity te = DatabaseOperations.getTaskForPlayer(p, sb.toString());
-                DatabaseOperations.redeemTask(p, te);
-                double pointTotal = DatabaseOperations.getPointsForPlayer(p);
-                p.sendMessage(String.format("%sRedeemed task [%s]. You now have %.2f point%s",
-                    ChatColor.AQUA, te.getTaskDescription(), pointTotal, pointTotal == 1 ? "" : "s"));
+                if (te != null) {
+                    DatabaseOperations.redeemTask(p, te);
+                    double pointTotal = DatabaseOperations.getPointsForPlayer(p);
+                    p.sendMessage(String.format("%sRedeemed task [%s] for %d point%s. You now have %.2f point%s",
+                            ChatColor.AQUA, te.getTaskDescription(), te.getPointReward(),
+                            te.getPointReward() == 1 ? "" : "s", pointTotal, pointTotal == 1 ? "" : "s"));
+                }
+                else {
+                    p.sendMessage(String.format("%sYou do not have task [%s], or it does not exist", ChatColor.RED, sb.toString()));
+                }
                 return true;
             }
             p.sendMessage(ChatColor.RED + String.format("Usage: /%s {view/redeem} <difficulty> <task>", alias));
