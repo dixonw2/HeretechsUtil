@@ -159,10 +159,6 @@ public class DatabaseOperations {
                 cmd.setString(3, p.getUniqueId().toString());
                 cmd.executeUpdate();
 
-                // player gets an extra life at the beginning of every world
-                updatePlayerLives(p, 1);
-
-
                 util.getLogger().info(String.format("%s PlayerWorld created for player %s, world %s",
                         methodTrace, p.getName(), w.getName()));
             }

@@ -51,9 +51,10 @@ public class PlayerDamagedListener implements Listener {
                         }
                     }
 
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 600, 1));
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 600, 2));
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 600, 4));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 600, 0));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 600, 1));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 600, 1));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 600, 0));
                     p.setFoodLevel(20);
                     p.sendMessage(ChatColor.DARK_RED + "The Minecraft Gods have bestowed upon you an additional life due to all that you have accomplished. Don't waste it.");
                     p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, 1, 1.0f);

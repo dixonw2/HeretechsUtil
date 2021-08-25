@@ -27,6 +27,7 @@ public class TabCompleteBuyCommandExecutor implements TabCompleter {
                         options.add(opt);
                 }
             }
+            // only allows for one word to be typed for filtering
             else if (args.length >= 1 && args.length <= 2 && args[0].toLowerCase().contains("item")) {
                 StringBuilder item = new StringBuilder();
                 for (int i = 1; i < args.length; i++) {
