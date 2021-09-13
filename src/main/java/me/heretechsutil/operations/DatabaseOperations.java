@@ -430,8 +430,8 @@ public class DatabaseOperations {
                     rs.getString("PlayerName"),
                     rs.getInt("Points"), loadTasksForPlayer(rs.getInt("id")), rs.getInt("Lives"));
                 players.put(rs.getString("UUID"), pe);
-                util.getLogger().info(String.format("Loaded player %s with %.2f points and %d lives",
-                    pe.getPlayerName(), pe.getPoints(), pe.getLives()));
+                util.getLogger().info(String.format("Loaded player %s with %.2f points and %d %s",
+                    pe.getPlayerName(), pe.getPoints(), pe.getLives(), pe.getLives() == 1 ? "life" : "lives"));
             }
         }
         catch (SQLException e) {

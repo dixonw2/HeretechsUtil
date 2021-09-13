@@ -1,40 +1,41 @@
 package me.heretechsutil.operations;
 
-import jdk.jfr.internal.LogLevel;
 import me.heretechsutil.HeretechsUtil;
 import me.heretechsutil.entities.BuyableEntity;
 import org.bukkit.Material;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.logging.Level;
+import java.util.*;
 
 public class ConfigOperations {
-    private static final ArrayList<BuyableEntity> buyables = new ArrayList<>();
+    private static final HashMap<String, List<BuyableEntity>> buyables = new HashMap<>();
 
-    public static BuyableEntity getBuyable(String item) {
+    public static BuyableEntity getBuyable(String category, String item) {
+
         if (item.equalsIgnoreCase("life")) {
-            return buyables.stream().filter(x -> x.getItem().equalsIgnoreCase(item)).findFirst().get();
+            return buyables.get("buyables.Miscellaneous").stream().filter(x -> x.getItem().equalsIgnoreCase("life")).findFirst().get();
         }
-        return buyables.stream().filter(x -> x.getItem().equalsIgnoreCase(Material.matchMaterial(item).name())).findFirst().get();
+        HeretechsUtil.getInstance().getLogger().info("Category: " + category);
+        HeretechsUtil.getInstance().getLogger().info("Item: " + item);
+        HeretechsUtil.getInstance().getLogger().info("buyables count: " + buyables.size());
+        buyables.forEach((x, y) -> HeretechsUtil.getInstance().getLogger().info("Key: " + x));
+        return buyables.get("buyables." + category.toUpperCase()).stream().filter(x -> x.getItem().equalsIgnoreCase(Objects.requireNonNull(Material.matchMaterial(item)).name())).findFirst().get();
     }
 
-    public static ArrayList<BuyableEntity> getBuyables() {
+    public static HashMap<String, List<BuyableEntity>> getBuyables() {
         return buyables;
     }
 
     public static void loadBuyables() {
         String methodTrace = "DatabaseOperations.loadBuyables():";
-        HashMap<String, Object> items = (HashMap<String, Object>) Objects.requireNonNull(HeretechsUtil.getInstance().getConfig().
-                getConfigurationSection("buyables")).getValues(false);
-        items.forEach((item, cost) -> {
-            Material m = Material.matchMaterial(item);
-            if (m != null || item.equalsIgnoreCase("life")) {
+        HashSet<String> categories = (HashSet<String>) HeretechsUtil.getInstance().getConfig().getConfigurationSection("buyables").getKeys(false);
+
+        /*
+
+            Material m = Material.matchMaterial(category);
+            if (m != null || category.equalsIgnoreCase("life")) {
                 try {
-                    double amount = Double.parseDouble(cost.toString());
-                    buyables.add(new BuyableEntity(item, amount));
+                    double amount = Double.parseDouble(subcategory.toString());
+                    buyables.add(new BuyableEntity(category, amount));
                 }
                 catch (NumberFormatException e) {
                     HeretechsUtil.getInstance().getLogger().
@@ -43,10 +44,23 @@ public class ConfigOperations {
             }
             else {
                 HeretechsUtil.getInstance().getLogger().
-                    log(Level.SEVERE, String.format("%s %s is not a valid item. Ignored", methodTrace, item));
+                    log(Level.SEVERE, String.format("%s %s is not a valid item. Ignored", methodTrace, category));
             }
         });
 
-        buyables.sort(Comparator.comparing(BuyableEntity::getItem));
+        buyables.sort(Comparator.comparing(BuyableEntity::getItem));*/
+        categories.forEach(x -> addBuyableForCategory("buyables." + x));
+    }
+
+    private static void addBuyableForCategory(String category) {
+        HashMap<String, Object> values = (HashMap<String, Object>) Objects.requireNonNull(HeretechsUtil.getInstance().getConfig().
+            getConfigurationSection(category)).getValues(false);
+        values.forEach((item, cost) -> {
+            if (!buyables.containsKey(category)) {
+                buyables.put(category.toUpperCase(), new ArrayList<>());
+            }
+
+            buyables.get(category).add(new BuyableEntity(item.toUpperCase(), Double.parseDouble(cost.toString())));
+        });
     }
 }
