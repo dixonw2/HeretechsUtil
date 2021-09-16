@@ -33,7 +33,7 @@ buyables:
     oak_boat: 1
     nautilus_shell: 8
     heart_of_the_sea: 5
-    dripstone: 0.5
+    pointed_dripstone: 0.5
   Gems/Ingots:
     diamond: 12
     copper_ingot: 0.5

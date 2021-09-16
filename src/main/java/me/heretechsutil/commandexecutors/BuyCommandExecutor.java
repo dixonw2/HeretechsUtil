@@ -23,30 +23,46 @@ public class BuyCommandExecutor implements CommandExecutor {
         String methodTrace = "BuyCommandExecutor.onCommand():";
         if (sender instanceof Player) {
             Player p = (Player) sender;
+
             if (args.length == 2 && args[0].equalsIgnoreCase("view")) {
                 ArrayList<String> buyables = new ArrayList<>();
                 // args[1] is the category
-                ConfigOperations.getBuyables().get("buyables." + args[1].toUpperCase()).forEach(x -> {
-                    String itemName = WordUtils.capitalizeFully(x.getItem()) + ": " + x.getCost();
-                    itemName = itemName.replaceAll("_", " ");
-                    buyables.add(itemName);
-                });
-                Collections.sort(buyables);
-                boolean aqua = false;
-                StringBuilder s = new StringBuilder();
-                for (int i = 0; i < buyables.size(); i++) {
-                    s.append(aqua ? ChatColor.AQUA : ChatColor.YELLOW).append(buyables.get(i));
-                    aqua = !aqua;
-                    if (i + 1 != buyables.size()) {
-                        s.append(", ");
+                ArrayList<BuyableEntity> buyablesForCategory = ConfigOperations.getBuyables(args[1]);
+                if (buyablesForCategory != null && buyablesForCategory.size() > 0) {
+                    buyablesForCategory.forEach(x -> {
+                        String itemName = WordUtils.capitalizeFully(x.getItem()) + ": " + x.getCost();
+                        itemName = itemName.replaceAll("_", " ");
+                        buyables.add(itemName);
+                    });
+
+                    Collections.sort(buyables);
+                    boolean aqua = false;
+                    StringBuilder s = new StringBuilder();
+                    for (int i = 0; i < buyables.size(); i++) {
+                        s.append(aqua ? ChatColor.AQUA : ChatColor.YELLOW).append(buyables.get(i));
+                        aqua = !aqua;
+                        if (i + 1 != buyables.size()) {
+                            s.append(", ");
+                        }
                     }
+                    p.sendMessage(String.format("%s===== %s =====", ChatColor.LIGHT_PURPLE, WordUtils.capitalizeFully(args[1])));
+                    p.sendMessage(s.toString());
+                    p.sendMessage(String.format("%s===== %s =====", ChatColor.LIGHT_PURPLE, WordUtils.capitalizeFully(args[1])));
+                    return true;
                 }
-                p.sendMessage(String.format("%s===== %s =====", ChatColor.LIGHT_PURPLE, args[1]));
-                p.sendMessage(s.toString());
-                p.sendMessage(String.format("%s===== %s =====", ChatColor.LIGHT_PURPLE, args[1]));
-                return true;
+                else {
+                    p.sendMessage(String.format("%sCategory %s either does not exist or does not contain any buyables",
+                        ChatColor.RED, WordUtils.capitalizeFully(args[1])));
+                    return true;
+                }
             }
             else if (args.length >= 2 && args[0].equalsIgnoreCase("item")) {
+
+                if (ConfigOperations.getBuyables(args[1]) == null) {
+                    p.sendMessage(String.format("%sCategory [%s] does not exist", ChatColor.RED, WordUtils.capitalizeFully(args[1])));
+                    return true;
+                }
+
                 int amount = 0;
                 double cost = 0;
                 StringBuilder item = new StringBuilder();
@@ -56,14 +72,18 @@ public class BuyCommandExecutor implements CommandExecutor {
                         try {
                             amount = Integer.parseInt(args[args.length - 1]);
                             double tempCost = Double.parseDouble(args[i + 1]);
-                            HeretechsUtil.getInstance().getLogger().info(args[1] + " is the category :D What about item? " + item.toString().replace(" ", "_"));
-                            BuyableEntity buyable = ConfigOperations.getBuyable("buyables." + args[1], item.toString().replace(" ", "_"));
+                            BuyableEntity buyable = ConfigOperations.getBuyable(args[1], item.toString().replace(" ", "_"));
                             if (buyable != null) {
                                 cost = buyable.getCost();
                                 if (tempCost != cost) {
-                                    p.sendMessage(ChatColor.LIGHT_PURPLE + "Nice try lol");
+                                    p.sendMessage(ChatColor.LIGHT_PURPLE + "Nice try");
+                                    return true;
                                 }
                                 break;
+                            }
+                            else {
+                                p.sendMessage(String.format("%sItem [%s] does not exist", ChatColor.RED, WordUtils.capitalizeFully(item.toString())));
+                                return true;
                             }
                         }
                         catch (NumberFormatException e) {

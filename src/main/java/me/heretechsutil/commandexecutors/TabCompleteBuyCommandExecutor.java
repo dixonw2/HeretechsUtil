@@ -32,21 +32,22 @@ public class TabCompleteBuyCommandExecutor implements TabCompleter {
             else if (args.length == 2 && (args[0].equalsIgnoreCase("view")
                 || args[0].equalsIgnoreCase("item"))) {
                 for (String category : ConfigOperations.getBuyables().keySet()) {
-                    if (category.toLowerCase().contains(args[1].toLowerCase())) {
-                        options.add(category.split("\\.")[1]);
+                    if (category.toUpperCase().contains(args[1].toUpperCase())) {
+                        options.add(WordUtils.capitalizeFully(category));
+                        //options.add(WordUtils.capitalizeFully(category).split("\\.")[1]);
                     }
                 }
             }
 
             // only allows for one word to be typed for filtering
-            else if (args.length >= 3 && args.length <= 4 && args[0].toLowerCase().contains("item")) {
+            else if (args.length >= 3 && args.length <= 4 && args[0].equalsIgnoreCase("item")) {
                 if (ConfigOperations.getBuyables().containsKey(args[1].toUpperCase())) {
                     StringBuilder item = new StringBuilder();
                     for (int i = 2; i < args.length; i++) {
                         item.append(args[i]);
                     }
-                    ConfigOperations.getBuyables().get("buyables." + args[1].toUpperCase()).stream().filter(x -> x.getItem().toLowerCase().
-                            contains(item.toString().toLowerCase())).forEach(x -> {
+                    ConfigOperations.getBuyables().get(args[1].toUpperCase()).stream().filter(x -> x.getItem().toUpperCase().
+                            contains(item.toString().toUpperCase())).forEach(x -> {
                         String itemName = WordUtils.capitalizeFully(x.getItem()) + ": " + x.getCost();
                         itemName = itemName.replaceAll("_", " ");
                         options.add(itemName);

@@ -10,7 +10,6 @@ import org.bukkit.entity.Player;
 
 import javax.sql.DataSource;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
