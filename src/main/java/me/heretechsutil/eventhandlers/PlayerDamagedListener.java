@@ -9,9 +9,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-
-import java.util.Collection;
-import java.util.List;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 public class PlayerDamagedListener implements Listener {
 
@@ -42,8 +41,31 @@ public class PlayerDamagedListener implements Listener {
                 else {
                     event.setCancelled(true);
                     p.setHealth(20);
+
+                    if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
+                        if (p.getBedSpawnLocation() != null) {
+                            p.teleport(p.getBedSpawnLocation());
+                        }
+                        else {
+                            p.teleport(p.getWorld().getSpawnLocation());
+                        }
+                    }
+
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 600, 0));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 600, 1));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 600, 1));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 600, 0));
+                    p.setFoodLevel(20);
                     p.sendMessage(ChatColor.DARK_RED + "The Minecraft Gods have bestowed upon you an additional life due to all that you have accomplished. Don't waste it.");
+                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, 1, 1.0f);
                     p.playSound(p.getLocation(), Sound.ITEM_TOTEM_USE, 1, 0.5f);
+
+                    p.getServer().getOnlinePlayers().forEach(x -> {
+                        if (!x.getName().equalsIgnoreCase(p.getName())) {
+                            x.sendMessage(String.format("%s%s has been given an additional chance at life.", ChatColor.RED, p.getName()));
+                        }
+                    });
+
                     DatabaseOperations.updatePlayerLives(p, -1);
                 }
             }

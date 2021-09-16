@@ -10,7 +10,6 @@ import org.bukkit.entity.Player;
 
 import javax.sql.DataSource;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -112,7 +111,7 @@ public class DatabaseOperations {
                 ResultSet rs = cmd.executeQuery();
                 if (rs.next()) {
                     players.put(p.getUniqueId().toString(),
-                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>(), 0));
+                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>(), 1));
                 }
             }
             catch (SQLException e) {
@@ -430,8 +429,8 @@ public class DatabaseOperations {
                     rs.getString("PlayerName"),
                     rs.getInt("Points"), loadTasksForPlayer(rs.getInt("id")), rs.getInt("Lives"));
                 players.put(rs.getString("UUID"), pe);
-                util.getLogger().info(String.format("Loaded player %s with %.2f points and %d lives",
-                    pe.getPlayerName(), pe.getPoints(), pe.getLives()));
+                util.getLogger().info(String.format("Loaded player %s with %.2f points and %d %s",
+                    pe.getPlayerName(), pe.getPoints(), pe.getLives(), pe.getLives() == 1 ? "life" : "lives"));
             }
         }
         catch (SQLException e) {

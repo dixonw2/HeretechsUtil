@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public class TabCompleteBuyCommandExecutor implements TabCompleter {
 
@@ -27,17 +28,31 @@ public class TabCompleteBuyCommandExecutor implements TabCompleter {
                         options.add(opt);
                 }
             }
-            else if (args.length >= 1 && args.length <= 2 && args[0].toLowerCase().contains("item")) {
-                StringBuilder item = new StringBuilder();
-                for (int i = 1; i < args.length; i++) {
-                    item.append(args[i]);
+
+            else if (args.length == 2 && (args[0].equalsIgnoreCase("view")
+                || args[0].equalsIgnoreCase("item"))) {
+                for (String category : ConfigOperations.getBuyables().keySet()) {
+                    if (category.toUpperCase().contains(args[1].toUpperCase())) {
+                        options.add(WordUtils.capitalizeFully(category));
+                        //options.add(WordUtils.capitalizeFully(category).split("\\.")[1]);
+                    }
                 }
-                ConfigOperations.getBuyables().stream().filter(x -> x.getItem().toLowerCase().
-                    contains(item.toString().toLowerCase())).forEach(x -> {
+            }
+
+            // only allows for one word to be typed for filtering
+            else if (args.length >= 3 && args.length <= 4 && args[0].equalsIgnoreCase("item")) {
+                if (ConfigOperations.getBuyables().containsKey(args[1].toUpperCase())) {
+                    StringBuilder item = new StringBuilder();
+                    for (int i = 2; i < args.length; i++) {
+                        item.append(args[i]);
+                    }
+                    ConfigOperations.getBuyables().get(args[1].toUpperCase()).stream().filter(x -> x.getItem().toUpperCase().
+                            contains(item.toString().toUpperCase())).forEach(x -> {
                         String itemName = WordUtils.capitalizeFully(x.getItem()) + ": " + x.getCost();
                         itemName = itemName.replaceAll("_", " ");
                         options.add(itemName);
-                });
+                    });
+                }
             }
 
             return options;

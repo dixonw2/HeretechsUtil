@@ -1,7 +1,7 @@
 package me.heretechsutil;
 
 import me.heretechsutil.commandexecutors.*;
-import me.heretechsutil.eventhandlers.MobTargetListener;
+import me.heretechsutil.eventhandlers.MobSpawnListener;
 import me.heretechsutil.eventhandlers.PlayerDamagedListener;
 import me.heretechsutil.eventhandlers.PlayerJoinListener;
 import me.heretechsutil.operations.ConfigOperations;
@@ -26,7 +26,7 @@ public final class HeretechsUtil extends JavaPlugin {
     public void onEnable(){
         // Plugin startup logic
         instance = this;
-        getServer().getPluginManager().registerEvents(new MobTargetListener(), this);
+        getServer().getPluginManager().registerEvents(new MobSpawnListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerDamagedListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(), this);
         getCommand("points").setExecutor(new PointsCommandExecutor());

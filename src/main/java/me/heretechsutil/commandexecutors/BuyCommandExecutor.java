@@ -1,6 +1,7 @@
 package me.heretechsutil.commandexecutors;
 
 import me.heretechsutil.HeretechsUtil;
+import me.heretechsutil.entities.BuyableEntity;
 import me.heretechsutil.operations.ConfigOperations;
 import me.heretechsutil.operations.DatabaseOperations;
 import org.apache.commons.lang.WordUtils;
@@ -9,15 +10,11 @@ import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class BuyCommandExecutor implements CommandExecutor {
 
@@ -26,32 +23,68 @@ public class BuyCommandExecutor implements CommandExecutor {
         String methodTrace = "BuyCommandExecutor.onCommand():";
         if (sender instanceof Player) {
             Player p = (Player) sender;
-            if (args.length == 1 && args[0].equalsIgnoreCase("view")) {
+
+            if (args.length == 2 && args[0].equalsIgnoreCase("view")) {
                 ArrayList<String> buyables = new ArrayList<>();
-                ConfigOperations.getBuyables().forEach(x -> {
-                    String itemName = WordUtils.capitalizeFully(x.getItem()) + ": " + x.getCost();
-                    itemName = itemName.replaceAll("_", " ");
-                    buyables.add(itemName);
-                });
-                String s = String.join(", ", buyables);
-                p.sendMessage(ChatColor.AQUA + s);
-                return true;
+                // args[1] is the category
+                ArrayList<BuyableEntity> buyablesForCategory = ConfigOperations.getBuyables(args[1]);
+                if (buyablesForCategory != null && buyablesForCategory.size() > 0) {
+                    buyablesForCategory.forEach(x -> {
+                        String itemName = WordUtils.capitalizeFully(x.getItem()) + ": " + x.getCost();
+                        itemName = itemName.replaceAll("_", " ");
+                        buyables.add(itemName);
+                    });
+
+                    Collections.sort(buyables);
+                    boolean aqua = false;
+                    StringBuilder s = new StringBuilder();
+                    for (int i = 0; i < buyables.size(); i++) {
+                        s.append(aqua ? ChatColor.AQUA : ChatColor.YELLOW).append(buyables.get(i));
+                        aqua = !aqua;
+                        if (i + 1 != buyables.size()) {
+                            s.append(", ");
+                        }
+                    }
+                    p.sendMessage(String.format("%s===== %s =====", ChatColor.LIGHT_PURPLE, WordUtils.capitalizeFully(args[1])));
+                    p.sendMessage(s.toString());
+                    p.sendMessage(String.format("%s===== %s =====", ChatColor.LIGHT_PURPLE, WordUtils.capitalizeFully(args[1])));
+                    return true;
+                }
+                else {
+                    p.sendMessage(String.format("%sCategory %s either does not exist or does not contain any buyables",
+                        ChatColor.RED, WordUtils.capitalizeFully(args[1])));
+                    return true;
+                }
             }
-            else if (args.length >= 2 && args[0].toLowerCase().contains("item")) {
+            else if (args.length >= 2 && args[0].equalsIgnoreCase("item")) {
+
+                if (ConfigOperations.getBuyables(args[1]) == null) {
+                    p.sendMessage(String.format("%sCategory [%s] does not exist", ChatColor.RED, WordUtils.capitalizeFully(args[1])));
+                    return true;
+                }
+
                 int amount = 0;
                 double cost = 0;
                 StringBuilder item = new StringBuilder();
-                for (int i = 1; i < args.length; i++) {
+                for (int i = 2; i < args.length; i++) {
                     if (args[i].contains(":")) {
                         item.append(args[i].replace(":", ""));
                         try {
                             amount = Integer.parseInt(args[args.length - 1]);
                             double tempCost = Double.parseDouble(args[i + 1]);
-                            cost = ConfigOperations.getBuyable(item.toString().replace(" ", "_")).getCost();
-                            if (tempCost != cost) {
-                                p.sendMessage(ChatColor.LIGHT_PURPLE + "Nice try lol");
+                            BuyableEntity buyable = ConfigOperations.getBuyable(args[1], item.toString().replace(" ", "_"));
+                            if (buyable != null) {
+                                cost = buyable.getCost();
+                                if (tempCost != cost) {
+                                    p.sendMessage(ChatColor.LIGHT_PURPLE + "Nice try");
+                                    return true;
+                                }
+                                break;
                             }
-                            break;
+                            else {
+                                p.sendMessage(String.format("%sItem [%s] does not exist", ChatColor.RED, WordUtils.capitalizeFully(item.toString())));
+                                return true;
+                            }
                         }
                         catch (NumberFormatException e) {
                             p.sendMessage(ChatColor.RED + "Invalid quantity specified");
@@ -74,7 +107,7 @@ public class BuyCommandExecutor implements CommandExecutor {
                 if (item.toString().equalsIgnoreCase("life")) {
                     DatabaseOperations.addPointsToPlayer(p, -(amount * cost));
                     DatabaseOperations.updatePlayerLives(p, amount);
-                    p.sendMessage(ChatColor.AQUA + "You've received an additional life");
+                    p.sendMessage(ChatColor.GREEN + "You've received an additional life. Use it wisely.");
                     double points = DatabaseOperations.getPointsForPlayer(p);
                     p.sendMessage(ChatColor.AQUA + String.format("You now have %.2f point%s", points, points == 1 ? "" : "s"));
                 }
@@ -101,7 +134,7 @@ public class BuyCommandExecutor implements CommandExecutor {
                 return true;
             }
         }
-        sender.sendMessage(ChatColor.RED + String.format("Usage: /%s {item/view} <item> <quantity>", alias));
+        sender.sendMessage(ChatColor.RED + String.format("Usage: /%s {item/view} <category> <item> <quantity>", alias));
         return true;
     }
 

@@ -1,5 +1,6 @@
 package me.heretechsutil.commandexecutors;
 
+import me.heretechsutil.HeretechsUtil;
 import me.heretechsutil.entities.TaskEntity;
 import me.heretechsutil.operations.DatabaseOperations;
 import org.bukkit.command.Command;
@@ -36,7 +37,7 @@ public class TabCompleteTaskCommandExecutor implements TabCompleter {
                 }
                 return options;
             }
-            else if (args.length >= 3 && args.length <= 4 && args[0].equalsIgnoreCase("redeem")) {
+            else if (args.length >= 2 && args.length <= 3 && args[0].equalsIgnoreCase("redeem")) {
                 StringBuilder sb = new StringBuilder();
                 for (int i = 2; i < args.length; i++) {
                     sb.append(args[i]);
