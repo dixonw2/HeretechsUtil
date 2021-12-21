@@ -93,6 +93,7 @@ public class DatabaseOperations {
         return players.get(p.getUniqueId().toString());
     }
 
+    // Create a new player on server join if they have not been on before with 20 points and 0 lives by default
     public static void createNewPlayerIfNotExists(Player p) {
         String methodTrace = "DatabaseOperations.createNewPlayerIfNotExists():";
         if (!playerExists(p)) {
@@ -111,7 +112,7 @@ public class DatabaseOperations {
                 ResultSet rs = cmd.executeQuery();
                 if (rs.next()) {
                     players.put(p.getUniqueId().toString(),
-                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>(), 1));
+                        new PlayerEntity(rs.getInt("id"), p.getUniqueId().toString(), p.getName(), 20, new ArrayList<>(), 0));
                 }
             }
             catch (SQLException e) {
@@ -169,6 +170,7 @@ public class DatabaseOperations {
         }
     }
 
+    // sets other worlds to inactive if their names do not match the current world name specified in the server.properties file
     public static void setInactiveWorlds(World w) {
         String methodTrace = "DatabaseOperations.setInactiveWorlds():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
@@ -207,6 +209,7 @@ public class DatabaseOperations {
         return players.get(p.getUniqueId().toString()).getPoints();
     }
 
+    // get a specific task based on the player and the task's description
     public static TaskEntity getTaskForPlayer(Player p, String description) {
         List<TaskEntity> list = players.get(p.getUniqueId().toString()).getTasks().stream().
                 filter(x -> x.getTaskDescription().equalsIgnoreCase(description)).collect(Collectors.toList());
@@ -264,6 +267,7 @@ public class DatabaseOperations {
         }
     }
 
+    // redeem a non-completed task for a player
     public static void redeemTask(Player p, TaskEntity task) {
         String methodTrace = "DatabaseOperations.redeemTask():";
         PlayerWorldEntity pw = getPlayerWorldEntityForActiveWorld(p);
@@ -418,6 +422,7 @@ public class DatabaseOperations {
         }
     }
 
+    // load players on startup and load into a HashMap so get operations don't rely on touching the database
     public static void loadPlayers() {
         String methodTrace = "DatabaseOperations.loadPlayers():";
         try (Connection conn = dataSource.getConnection(); PreparedStatement cmd = conn.prepareStatement(
